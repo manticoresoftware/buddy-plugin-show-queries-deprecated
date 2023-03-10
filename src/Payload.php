@@ -11,22 +11,22 @@
 
 namespace Manticoresearch\Buddy\Plugin\ShowQueries;
 
-use Manticoresearch\Buddy\Core\Network\Request as NetworkRequest;
-use Manticoresearch\Buddy\Core\Plugin\Request as BaseRequest;
+use Manticoresearch\Buddy\Core\Network\Request;
+use Manticoresearch\Buddy\Core\Plugin\BasePayload;
 
 /**
  * Request for Backup command that has parsed parameters from SQL
  */
-final class Request extends BaseRequest {
+final class Payload extends BasePayload {
 	public string $query;
 	public string $path;
 	public bool $hasCliEndpoint;
 
 	/**
-	 * @param NetworkRequest $request
+	 * @param Request $request
 	 * @return static
 	 */
-	public static function fromNetworkRequest(NetworkRequest $request): static {
+	public static function fromRequest(Request $request): static {
 		$self = new static();
 		$self->query = 'SELECT * FROM @@system.sessions';
 		[$self->path, $self->hasCliEndpoint] = self::getEndpointInfo($request);
@@ -34,10 +34,10 @@ final class Request extends BaseRequest {
 	}
 
 	/**
-	 * @param NetworkRequest $request
+	 * @param Request $request
 	 * @return bool
 	 */
-	public static function hasMatch(NetworkRequest $request): bool {
+	public static function hasMatch(Request $request): bool {
 		return strlen($request->payload) === 12 && strncasecmp($request->payload, 'show queries', 12) === 0;
 	}
 }

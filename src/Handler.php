@@ -12,7 +12,7 @@
 namespace Manticoresearch\Buddy\Plugin\ShowQueries;
 
 use Manticoresearch\Buddy\Core\ManticoreSearch\Client as HTTPClient;
-use Manticoresearch\Buddy\Core\Plugin\FormattableClientQueryExecutor;
+use Manticoresearch\Buddy\Core\Plugin\BaseHandlerWithTableFormatter;
 use Manticoresearch\Buddy\Core\Plugin\TableFormatter;
 use Manticoresearch\Buddy\Core\Task\Task;
 use Manticoresearch\Buddy\Core\Task\TaskPool;
@@ -23,7 +23,7 @@ use parallel\Runtime;
 /**
  * This is the parent class to handle erroneous Manticore queries
  */
-class Executor extends FormattableClientQueryExecutor {
+class Handler extends BaseHandlerWithTableFormatter {
 	const COL_MAP = [
 		'connid' => 'id',
 		'last cmd' => 'query',
@@ -34,10 +34,10 @@ class Executor extends FormattableClientQueryExecutor {
 	/**
 	 *  Initialize the executor
 	 *
-	 * @param Request $request
+	 * @param Payload $payload
 	 * @return void
 	 */
-	public function __construct(public Request $request) {
+	public function __construct(public Payload $payload) {
 	}
 
 	/**
@@ -47,25 +47,25 @@ class Executor extends FormattableClientQueryExecutor {
 	 * @throws RuntimeException
 	 */
 	public function run(Runtime $runtime): Task {
-		$this->manticoreClient->setPath($this->request->path);
+		$this->manticoreClient->setPath($this->payload->path);
 
 		// We run in a thread anyway but in case if we need blocking
 		// We just waiting for a thread to be done
 		$taskFn = static function (
-			Request $request,
+			Payload $payload,
 			HTTPClient $manticoreClient,
 			TableFormatter $tableFormatter,
 			array $tasks
 		): TaskResult {
 			// First, get response from the manticore
 			$time0 = hrtime(true);
-			$resp = $manticoreClient->sendRequest($request->query);
+			$resp = $manticoreClient->sendRequest($payload->query);
 			$result = static::formatResponse($resp->getBody());
 			// Second, get our own queries and append to the final result
 			/** @var array{0:array{data:array<mixed>,total:int}} $result */
 			$result[0]['data'] = array_merge($result[0]['data'], $tasks);
 			$result[0]['total'] += sizeof($tasks);
-			if ($request->hasCliEndpoint) {
+			if ($payload->hasCliEndpoint) {
 				return new TaskResult($tableFormatter->getTable($time0, $result[0]['data'], $result[0]['total']));
 			}
 			return new TaskResult($result);
@@ -74,7 +74,7 @@ class Executor extends FormattableClientQueryExecutor {
 		return Task::createInRuntime(
 			$runtime,
 			$taskFn,
-			[$this->request, $this->manticoreClient, $this->tableFormatter, static::getTasksToAppend()]
+			[$this->payload, $this->manticoreClient, $this->tableFormatter, static::getTasksToAppend()]
 		)->run();
 	}
 
