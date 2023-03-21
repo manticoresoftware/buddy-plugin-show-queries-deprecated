@@ -66,9 +66,9 @@ class Handler extends BaseHandlerWithTableFormatter {
 			$result[0]['data'] = array_merge($result[0]['data'], $tasks);
 			$result[0]['total'] += sizeof($tasks);
 			if ($payload->hasCliEndpoint) {
-				return new TaskResult($tableFormatter->getTable($time0, $result[0]['data'], $result[0]['total']));
+				return TaskResult::raw($tableFormatter->getTable($time0, $result[0]['data'], $result[0]['total']));
 			}
-			return new TaskResult($result);
+			return TaskResult::raw($result);
 		};
 
 		return Task::createInRuntime(
